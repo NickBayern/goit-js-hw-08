@@ -1,41 +1,46 @@
+import throttle from 'lodash.throttle';
 
+const formRef = document.querySelector('.feedback-form');
+const LOCALE_STORAGE_KEY = 'contact-form-key';
+import localStorage from './storage';
 
-import throttle from "lodash.throttle";
+const onFormInput = event => {
+  const { name, value } = event.target;
 
-const form = document.querySelector('.feedback-form');
+  let saveData = localStorage.load(LOCALE_STORAGE_KEY);
+  saveData = saveData ? saveData : {};
 
-const STORAGE_KEY = 'feedback-form-state';
-const savedMessage = localStorage.getItem(STORAGE_KEY);
-let formData = JSON.parse(savedMessage) ?? {};
-const keys = Object.keys(formData);
+  saveData[name] = value;
 
-function onFormSubmit(e) {
-    e.preventDefault();
+  localStorage.save(LOCALE_STORAGE_KEY, saveData);
+};
 
-    if (!e.target.elements.email.value || !e.target.elements.message.value)  {
-        return window.alert('Please, fill in all the necessary fields');
-    }
+const throttledOnFormInput = throttle(onFormInput, 500);
+formRef.addEventListener('input', throttledOnFormInput);
 
-    e.currentTarget.reset();
-    console.log(formData);
-    localStorage.removeItem(STORAGE_KEY);
+function initPage() {
+  const saveData = localStorage.load(LOCALE_STORAGE_KEY);
+
+  if (!saveData) {
+    return;
+  }
+  Object.entries(saveData).forEach(([name, value]) => {
+    formRef.elements[name].value = value;
+  });
 }
 
-function onFormInput(e) {
-    formData[e.target.name] = e.target.value;
-    const message  = JSON.stringify(formData);
-    localStorage.setItem(STORAGE_KEY, message);
-}
+initPage();
 
-function populateTextarea() {
-    if(savedMessage) {
-        for (let key of keys) {
-            form.elements[key].value = formData[key];
-        }
-    }
-}
+const handleSubmit = event => {
+  event.preventDefault();
 
-form.addEventListener('submit', onFormSubmit);
-form.addEventListener('input', throttle(onFormInput, 500));
+  const {
+    elements: { email, message },
+  } = event.currentTarget;
 
-populateTextarea();
+  console.log({ email: email.value, message: message.value });
+  event.currentTarget.reset();
+  localStorage.remove(LOCALE_STORAGE_KEY);
+};
+
+formRef.addEventListener('submit', handleSubmit);
